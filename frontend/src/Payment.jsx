@@ -1,126 +1,81 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const PaymentSetup = () => {
-  const location = useLocation();
-  const totalBill = location.state?.totalPrice || 0;
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [isPaymentSaved, setIsPaymentSaved] = useState(false);
-  const navigate = useNavigate();
+const Payment = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { totalPrice } = location.state; // Get totalPrice from state passed from Cart page
 
-  const handleSavePayment = () => {
-    setIsPaymentSaved(true);
-  };
+    const handlePayment = async () => {
+        // Step 1: Request the order from your backend (create Razorpay order)
+        console.log("Frontend Amount:", totalPrice)
+        try {
+            const response = await fetch('http://localhost:5001/api/payment/order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ amount: totalPrice * 100 }), // Amount in the smallest unit (paise)
+            });
 
-  const handlePay = async () => {
-    try {
-      const response = await fetch("http://localhost:5001/api/payment/createOrder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: totalBill, currency: "INR" }),
-      });
+            const orderData = await response.json();
+            console.log(orderData)
+            // Step 2: Initialize Razorpay with the order ID and other options
+            const options = {
+                key:import.meta.env.VITE_RAZORPAY_KEY_ID, // Replace with your Razorpay key ID
+                
+                amount: orderData.amount, // Amount in paise
+                currency: "INR",
+                name: "Smart Cart System",
+                description: "Payment for your purchase",
+                order_id: orderData.id,
+                prefill: {
+                    name: "Customer Name", // User's name
+                    email: "user@example.com", // User's email
+                    contact: "9999999999", // User's phone number
+                    method: "card",
+                      "card[number]": "5267 3181 8797 5449",
+                      "card[expiry]": "12/28",
+                      "card[cvv]": "123"
+                },
+                handler: function (response) {
+                //   alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
+                  
+                  // ✅ Redirect to Cart page after successful payment
+                  navigate('/cart');
+                },
+                theme: {
+                    color: "#61dafb",
+                },
+            };
 
-      const data = await response.json();
-      if (!data.success) throw new Error("Failed to create order");
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+        } catch (error) {
+            console.error("Error in creating Razorpay order:", error);
+        }
+    };
 
-      const options = {
-        key: "YOUR_RAZORPAY_KEY_ID", // Replace with your actual key
-        amount: data.amount,
-        currency: data.currency,
-        name: "SmartCart",
-        description: "Smart Shopping Payment",
-        order_id: data.orderId,
-        handler: async function (response) {
-          const verifyRes = await fetch("http://localhost:5001/api/payment/verifyPayment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
+    useEffect(() => {
+        if (!window.Razorpay) {
+            alert("Razorpay SDK not loaded");
+        }
+    }, []);
 
-          const verifyData = await verifyRes.json();
-          if (verifyData.success) {
-            navigate("/success");
-          } else {
-            alert("Payment verification failed!");
-          }
-        },
-        prefill: {
-          name: "User Name",
-          email: "user@example.com",
-          contact: "9999999999",
-        },
-        theme: {
-          color: "#3399cc",
-        },
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (error) {
-      console.error("Payment Error:", error);
-      alert("Payment failed, please try again.");
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <div className="bg-white shadow-lg rounded-lg p-6 sm:p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center mb-6">Payment Setup</h2>
-
-        {!isPaymentSaved ? (
-          <>
-            <label className="block font-medium mb-2">Select Payment Method:</label>
-            <select
-              className="w-full p-3 border rounded-lg mb-4"
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-            >
-              <option value="card">Credit/Debit Card</option>
-              <option value="upi">UPI / Digital Wallet</option>
-            </select>
-
-            {paymentMethod === "card" && (
-              <>
-                <input type="text" placeholder="Cardholder Name" className="mb-3 w-full p-3 border rounded-lg" />
-                <input type="text" placeholder="Card Number" className="mb-3 w-full p-3 border rounded-lg" />
-                <div className="flex gap-2">
-                  <input type="text" placeholder="MM/YY" className="mb-3 w-1/2 p-3 border rounded-lg" />
-                  <input type="password" placeholder="CVV" className="mb-3 w-1/2 p-3 border rounded-lg" />
-                </div>
-                <input type="text" placeholder="Billing Address" className="mb-4 w-full p-3 border rounded-lg" />
-              </>
-            )}
-
-            {paymentMethod === "upi" && (
-              <input type="text" placeholder="UPI ID (e.g., user@upi)" className="mb-4 w-full p-3 border rounded-lg" />
-            )}
-
-            <button
-              onClick={handleSavePayment}
-              className="w-full py-3 text-lg bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-            >
-              Save Payment Method
-            </button>
-          </>
-        ) : (
-          <p className="text-lg font-medium text-center mb-4">Payment method saved successfully!</p>
-        )}
-
-        {isPaymentSaved && (
-          <button
-            onClick={handlePay}
-            className="w-full py-3 text-lg bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-          >
-            Pay ₹{totalBill.toFixed(2)}
-          </button>
-        )}
-      </div>
-    </div>
-  );
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-6">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-6">Payment</h2>
+            <div className="max-w-md bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-bold mb-4">Total Amount: ₹{totalPrice}</h3>
+                <button
+                    onClick={handlePayment}
+                    className="bg-blue-500 text-white text-lg px-6 py-3 rounded-lg"
+                >
+                    Pay Now
+                </button>
+            </div>
+        </div>
+    );
 };
 
-export default PaymentSetup;
+export default Payment;
