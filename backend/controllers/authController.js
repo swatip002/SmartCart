@@ -7,10 +7,10 @@ const generateTokenAndSetCookie = (user, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "24h" });
 
     res.cookie("token", token, {
-        httpOnly: true, // Prevents XSS attacks
-        secure: process.env.NODE_ENV === "production", // Set secure flag in production
-        sameSite: "strict", // Prevent CSRF attacks
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 24 * 60 * 60 * 1000,
     });
 
     return token;
@@ -19,21 +19,21 @@ const generateTokenAndSetCookie = (user, res) => {
 // Register a new user
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, phone } = req.body;
 
         let user = await User.findOne({ email });
         if (user) return res.status(400).json({ message: "User already exists" });
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        user = new User({ name, email, password: hashedPassword, role });
+        user = new User({ name, email, password: hashedPassword, role, phone });
         await user.save();
 
         const token = generateTokenAndSetCookie(user, res);
 
         res.status(201).json({
             message: "User registered successfully",
-            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone },
             token,
         });
     } catch (error) {
@@ -56,7 +56,7 @@ const loginUser = async (req, res) => {
 
         res.json({
             message: "Login successful",
-            user: { id: user._id, name: user.name, email: user.email, role: user.role },
+            user: { id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone },
             token,
         });
     } catch (error) {
@@ -68,7 +68,7 @@ const loginUser = async (req, res) => {
 const logoutUser = (req, res) => {
     res.cookie("token", "", { 
         httpOnly: true, 
-        expires: new Date(0) // Expire immediately
+        expires: new Date(0)
     });
 
     res.json({ message: "Logout successful" });
@@ -77,7 +77,7 @@ const logoutUser = (req, res) => {
 // Get user details (Protected route)
 const getUserProfile = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select("-password"); // Exclude password
+        const user = await User.findById(req.user.id).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
 
         res.json(user);

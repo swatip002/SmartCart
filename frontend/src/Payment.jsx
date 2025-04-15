@@ -1,48 +1,75 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const Payment = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { totalPrice } = location.state; // Get totalPrice from state passed from Cart page
+    const { totalPrice } = location.state;
+
+    const [userDetails, setUserDetails] = useState({
+        name: "",
+        email: "",
+        phone: ""
+    });
+
+    // Fetch user details from backend
+    useEffect(() => {
+        const fetchUserData = async () => {
+            try {
+                const response = await fetch("http://localhost:5001/api/auth/profile", {
+                    credentials: "include", // Important to send cookies for auth
+                });
+
+                const data = await response.json();
+                console.log("User data:", data);
+                if (data.name && data.email && data.number) {
+                    setUserDetails({
+                        name: data.name,
+                        email: data.email,
+                        phone: data.phone
+                    });
+                } else {
+                    console.warn("User details incomplete:", data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch user details:", err);
+            }
+        };
+
+        fetchUserData();
+    }, []);
 
     const handlePayment = async () => {
-        // Step 1: Request the order from your backend (create Razorpay order)
-        console.log("Frontend Amount:", totalPrice)
         try {
             const response = await fetch('http://localhost:5001/api/payment/order', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ amount: totalPrice * 100 }), // Amount in the smallest unit (paise)
+                body: JSON.stringify({ amount: totalPrice * 100 }),
             });
 
             const orderData = await response.json();
-            console.log(orderData)
-            // Step 2: Initialize Razorpay with the order ID and other options
+            console.log("Order data:", orderData);
+
             const options = {
-                key:import.meta.env.VITE_RAZORPAY_KEY_ID, // Replace with your Razorpay key ID
-                
-                amount: orderData.amount, // Amount in paise
+                key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+                amount: orderData.amount,
                 currency: "INR",
                 name: "Smart Cart System",
                 description: "Payment for your purchase",
                 order_id: orderData.id,
                 prefill: {
-                    name: "Customer Name", // User's name
-                    email: "user@example.com", // User's email
-                    contact: "9999999999", // User's phone number
+                    name: userDetails.name,
+                    email: userDetails.email,
+                    contact: userDetails.phone,
                     method: "card",
-                      "card[number]": "5267 3181 8797 5449",
-                      "card[expiry]": "12/28",
-                      "card[cvv]": "123"
+                    "card[number]": "5267 3181 8797 5449",
+                    "card[expiry]": "12/28",
+                    "card[cvv]": "123"
                 },
                 handler: function (response) {
-                //   alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
-                  
-                  // ✅ Redirect to Cart page after successful payment
-                  navigate('/cart');
+                    navigate('/cart');
                 },
                 theme: {
                     color: "#61dafb",

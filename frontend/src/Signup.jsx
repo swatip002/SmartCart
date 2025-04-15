@@ -8,11 +8,12 @@ const Signup = () => {
         name: "",
         email: "",
         password: "",
+        phone: "",
+        cardNumber: "",
         role: "customer",
     });
 
     const [error, setError] = useState("");
-
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -47,6 +48,16 @@ const Signup = () => {
                     value={formData.password} onChange={handleChange} 
                     className="border p-3 w-full mb-3 rounded-lg"
                 />
+                <input 
+                    type="tel" name="phone" placeholder="Phone Number" 
+                    value={formData.phone} onChange={handleChange} 
+                    className="border p-3 w-full mb-3 rounded-lg"
+                />
+                <input 
+                    type="text" name="cardNumber" placeholder="Card Number" 
+                    value={formData.cardNumber} onChange={handleChange} 
+                    className="border p-3 w-full mb-3 rounded-lg"
+                />
                 <select 
                     name="role" value={formData.role} onChange={handleChange} 
                     className="border p-3 w-full mb-4 rounded-lg"
@@ -61,6 +72,7 @@ const Signup = () => {
                 >
                     Sign Up
                 </button>
+                {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
             </div>
         </div>
     );

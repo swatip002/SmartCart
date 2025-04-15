@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const UserSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -10,6 +9,11 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+    match: [/^\d{10}$/, 'Please enter a valid 10-digit phone number'],
   },
   password: {
     type: String,
@@ -21,7 +25,5 @@ const UserSchema = new mongoose.Schema({
     default: "customer",
   },
 }, { timestamps: true });
-
-
 
 module.exports = mongoose.model("User", UserSchema);
